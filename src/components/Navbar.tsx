@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Heart, Calendar, User, Menu, X } from "lucide-react";
+import { Home, Search, Heart, Calendar, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
