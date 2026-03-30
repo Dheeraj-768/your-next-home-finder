@@ -1,23 +1,31 @@
-import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Heart, Calendar, LayoutDashboard, Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Search, Heart, Calendar, LayoutDashboard, ShieldCheck, Menu, X, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const navItems = [
-  { path: "/", label: "Home", icon: Home },
-  { path: "/listings", label: "Explore", icon: Search },
-  { path: "/wishlist", label: "Wishlist", icon: Heart },
-  { path: "/bookings", label: "Bookings", icon: Calendar },
-  { path: "/owner", label: "Owner", icon: LayoutDashboard },
-];
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout, isAdmin, isOwner } = useAuth();
+
+  const navItems = [
+    { path: "/", label: "Home", icon: Home, show: true },
+    { path: "/listings", label: "Explore", icon: Search, show: true },
+    { path: "/wishlist", label: "Wishlist", icon: Heart, show: true },
+    { path: "/bookings", label: "Bookings", icon: Calendar, show: true },
+    { path: "/owner", label: "Owner", icon: LayoutDashboard, show: isOwner || isAdmin },
+    { path: "/admin", label: "Admin", icon: ShieldCheck, show: isAdmin },
+  ].filter((i) => i.show);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <>
-      {/* Desktop navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="container flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
@@ -48,30 +56,31 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/login"
-              className="px-4 py-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-lg shadow-glow hover:opacity-90 transition-opacity"
-            >
-              Sign up
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-sm">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-foreground font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground capitalize">({user.role})</span>
+                </div>
+                <button onClick={handleLogout} className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="px-4 py-2 text-sm font-medium text-foreground hover:text-primary transition-colors">Log in</Link>
+                <Link to="/signup" className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-lg shadow-glow hover:opacity-90 transition-opacity">Sign up</Link>
+              </>
+            )}
           </div>
 
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 text-foreground"
-          >
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-foreground">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -89,9 +98,7 @@ export default function Navbar() {
                     to={item.path}
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      active
-                        ? "gradient-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-secondary"
+                      active ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
                     }`}
                   >
                     <item.icon className="w-4 h-4" />
@@ -100,22 +107,25 @@ export default function Navbar() {
                 );
               })}
               <div className="border-t border-border pt-3 mt-2 flex flex-col gap-2">
-                <Link to="/login" onClick={() => setMobileOpen(false)} className="px-4 py-2 text-sm font-medium text-foreground">
-                  Log in
-                </Link>
-                <Link to="/signup" onClick={() => setMobileOpen(false)} className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-lg text-center">
-                  Sign up
-                </Link>
+                {user ? (
+                  <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="px-4 py-2 text-sm font-medium text-destructive text-left">
+                    Log out ({user.name})
+                  </button>
+                ) : (
+                  <>
+                    <Link to="/login" onClick={() => setMobileOpen(false)} className="px-4 py-2 text-sm font-medium text-foreground">Log in</Link>
+                    <Link to="/signup" onClick={() => setMobileOpen(false)} className="px-4 py-2 text-sm font-medium gradient-primary text-primary-foreground rounded-lg text-center">Sign up</Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Bottom nav for mobile */}
       <div className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border md:hidden">
         <div className="flex items-center justify-around py-2">
-          {navItems.map((item) => {
+          {navItems.slice(0, 5).map((item) => {
             const active = location.pathname === item.path;
             return (
               <Link
