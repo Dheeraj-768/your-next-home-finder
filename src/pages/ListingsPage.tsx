@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
-import { pgListings } from "@/data/mockData";
+import { getApprovedListings } from "@/data/listingsStore";
 import PGCard from "@/components/PGCard";
 import SearchFilters, { defaultFilters, type Filters } from "@/components/SearchFilters";
 
 export default function ListingsPage() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
 
+  const approvedListings = getApprovedListings();
   const filtered = useMemo(() => {
-    return pgListings.filter((pg) => {
+    return approvedListings.filter((pg) => {
       if (filters.search) {
         const q = filters.search.toLowerCase();
         if (!pg.name.toLowerCase().includes(q) && !pg.location.toLowerCase().includes(q)) return false;
