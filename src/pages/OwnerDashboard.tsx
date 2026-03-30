@@ -20,6 +20,9 @@ import {
   mockResidents, mockRentRecords, mockNotifications,
   type Resident, type RentRecord, type Notification,
 } from "@/data/rentData";
+import { useAuth } from "@/contexts/AuthContext";
+import { getOwnerListings, type ManagedListing } from "@/data/listingsStore";
+import { Badge } from "@/components/ui/badge";
 
 type StatusFilter = "all" | "paid" | "pending" | "pending_verification" | "rejected";
 
