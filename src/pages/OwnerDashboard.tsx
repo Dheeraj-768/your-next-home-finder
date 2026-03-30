@@ -34,7 +34,9 @@ const statusConfig = {
 };
 
 export default function OwnerDashboard() {
+  const { user } = useAuth();
   const [residents] = useState<Resident[]>(mockResidents);
+  const ownerListings = useMemo(() => getOwnerListings(user?.id || ""), [user]);
   const [rentRecords, setRentRecords] = useState<RentRecord[]>(mockRentRecords);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [filter, setFilter] = useState<StatusFilter>("all");
