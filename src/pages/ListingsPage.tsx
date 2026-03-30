@@ -6,8 +6,9 @@ import SearchFilters, { defaultFilters, type Filters } from "@/components/Search
 export default function ListingsPage() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
 
+  const approvedListings = getApprovedListings();
   const filtered = useMemo(() => {
-    return pgListings.filter((pg) => {
+    return approvedListings.filter((pg) => {
       if (filters.search) {
         const q = filters.search.toLowerCase();
         if (!pg.name.toLowerCase().includes(q) && !pg.location.toLowerCase().includes(q)) return false;
