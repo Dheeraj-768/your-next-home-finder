@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Heart, Calendar, User, Menu, X } from "lucide-react";
+import { Home, Search, Heart, Calendar, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -8,6 +8,7 @@ const navItems = [
   { path: "/listings", label: "Explore", icon: Search },
   { path: "/wishlist", label: "Wishlist", icon: Heart },
   { path: "/bookings", label: "Bookings", icon: Calendar },
+  { path: "/owner", label: "Owner", icon: LayoutDashboard },
 ];
 
 export default function Navbar() {
