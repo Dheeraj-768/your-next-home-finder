@@ -12,6 +12,7 @@ import BookingsPage from "@/pages/BookingsPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import NotFound from "@/pages/NotFound";
+import OwnerDashboard from "@/pages/OwnerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/pg/:id" element={<PGDetailPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="*" element={<NotFound />} />

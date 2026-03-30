@@ -8,6 +8,7 @@ const navItems = [
   { path: "/listings", label: "Explore", icon: Search },
   { path: "/wishlist", label: "Wishlist", icon: Heart },
   { path: "/bookings", label: "Bookings", icon: Calendar },
+  { path: "/owner", label: "Owner", icon: LayoutDashboard },
 ];
 
 export default function Navbar() {
