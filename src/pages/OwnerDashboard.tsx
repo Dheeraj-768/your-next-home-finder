@@ -107,11 +107,16 @@ export default function OwnerDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Owner Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Rent management for March 2026
-            </p>
+            <p className="text-sm text-muted-foreground">Rent management for March 2026</p>
           </div>
-          <NotificationBell notifications={notifications} onMarkRead={markNotifRead} onMarkAllRead={markAllRead} />
+          <div className="flex items-center gap-2">
+            <Link to="/owner/create">
+              <Button className="gradient-primary text-primary-foreground shadow-glow" size="sm">
+                <Plus className="w-4 h-4 mr-1" /> Add PG
+              </Button>
+            </Link>
+            <NotificationBell notifications={notifications} onMarkRead={markNotifRead} onMarkAllRead={markAllRead} />
+          </div>
         </div>
 
         {/* Stat Cards */}

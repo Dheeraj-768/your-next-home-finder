@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { pgListings } from "@/data/mockData";
+import { getApprovedListings } from "@/data/listingsStore";
 import PGCard from "@/components/PGCard";
 import SearchFilters, { defaultFilters, type Filters } from "@/components/SearchFilters";
 
