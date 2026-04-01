@@ -14,16 +14,196 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      pg_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_360: boolean | null
+          pg_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_360?: boolean | null
+          pg_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_360?: boolean | null
+          pg_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pg_images_pg_id_fkey"
+            columns: ["pg_id"]
+            isOneToOne: false
+            referencedRelation: "pg_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pg_listings: {
+        Row: {
+          amenities: string[] | null
+          created_at: string
+          description: string | null
+          gender: string | null
+          id: string
+          location: string
+          occupancy: string | null
+          owner_id: string
+          price: number
+          title: string
+          updated_at: string
+          vacancies: number | null
+          verified: boolean | null
+        }
+        Insert: {
+          amenities?: string[] | null
+          created_at?: string
+          description?: string | null
+          gender?: string | null
+          id?: string
+          location: string
+          occupancy?: string | null
+          owner_id: string
+          price: number
+          title: string
+          updated_at?: string
+          vacancies?: number | null
+          verified?: boolean | null
+        }
+        Update: {
+          amenities?: string[] | null
+          created_at?: string
+          description?: string | null
+          gender?: string | null
+          id?: string
+          location?: string
+          occupancy?: string | null
+          owner_id?: string
+          price?: number
+          title?: string
+          updated_at?: string
+          vacancies?: number | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pg_listings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          pg_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pg_id: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pg_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_pg_id_fkey"
+            columns: ["pg_id"]
+            isOneToOne: false
+            referencedRelation: "pg_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "pg_owner" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +330,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "pg_owner", "user"],
+    },
   },
 } as const
