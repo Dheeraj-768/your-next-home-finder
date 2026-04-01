@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus, Upload, X, Image as ImageIcon } from "lucide-react";
@@ -6,77 +6,103 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { addListing, type ManagedListing } from "@/data/listingsStore";
-import { allFacilities, cities } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const ALL_FACILITIES = ["WiFi", "Food", "AC", "Hot Water", "Laundry", "Gym", "Parking", "CCTV", "Power Backup", "Housekeeping", "Security Guard", "Terrace"];
 
 export default function CreateListingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [city, setCity] = useState("Bangalore");
-  const [address, setAddress] = useState("");
   const [rent, setRent] = useState("");
   const [description, setDescription] = useState("");
   const [occupancy, setOccupancy] = useState("Double Sharing");
-  const [gender, setGender] = useState<"male" | "female" | "co-ed">("co-ed");
+  const [gender, setGender] = useState("co-ed");
   const [vacancies, setVacancies] = useState("");
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  const [images, setImages] = useState<string[]>([]);
-  const [imageUrl, setImageUrl] = useState("");
-  const [panoramaUrl, setPanoramaUrl] = useState("");
+  const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string; is360: boolean }[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleFacility = (f: string) => {
-    setSelectedFacilities((prev) =>
-      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
-    );
+    setSelectedFacilities((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
   };
 
-  const addImage = () => {
-    if (imageUrl.trim() && images.length < 6) {
-      setImages((prev) => [...prev, imageUrl.trim()]);
-      setImageUrl("");
-    }
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach((file) => {
+      const preview = URL.createObjectURL(file);
+      setUploadedImages((prev) => [...prev, { file, preview, is360: false }]);
+    });
   };
 
-  const removeImage = (i: number) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removeImage = (i: number) => {
+    setUploadedImages((prev) => {
+      URL.revokeObjectURL(prev[i].preview);
+      return prev.filter((_, idx) => idx !== i);
+    });
+  };
 
-  const handleSubmit = () => {
-    if (!name || !location || !rent || !description) {
+  const toggle360 = (i: number) => {
+    setUploadedImages((prev) => prev.map((img, idx) => idx === i ? { ...img, is360: !img.is360 } : img));
+  };
+
+  const handleSubmit = async () => {
+    if (!name || !location || !rent || !description || !user) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const listing: ManagedListing = {
-      id: `pg-${Date.now()}`,
-      name,
-      ownerName: user?.name || "Unknown",
-      location: `${location}, ${city}`,
-      city,
-      address,
-      rent: parseInt(rent),
-      description,
-      images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800"],
-      panoramaUrl: panoramaUrl || undefined,
-      facilities: selectedFacilities,
-      rating: 0,
-      reviewCount: 0,
-      vacancies: parseInt(vacancies) || 0,
-      occupancy,
-      gender,
-      nearbyPlaces: [],
-      ratings: { food: 0, cleanliness: 0, wifi: 0, safety: 0 },
-      status: "pending",
-      ownerId: user?.id || "",
-      createdAt: new Date().toISOString().split("T")[0],
-    };
+    setIsSubmitting(true);
+    try {
+      // Create listing
+      const { data: listing, error: listingError } = await supabase
+        .from("pg_listings")
+        .insert({
+          owner_id: user.id,
+          title: name,
+          description,
+          location,
+          price: parseInt(rent),
+          amenities: selectedFacilities,
+          gender,
+          occupancy,
+          vacancies: parseInt(vacancies) || 0,
+          verified: false,
+        })
+        .select()
+        .single();
 
-    addListing(listing);
-    toast.success("Listing submitted for admin approval!");
-    navigate("/owner");
+      if (listingError) throw listingError;
+
+      // Upload images
+      for (const img of uploadedImages) {
+        const ext = img.file.name.split(".").pop();
+        const path = `${user.id}/${listing.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("pg-images")
+          .upload(path, img.file);
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from("pg-images").getPublicUrl(path);
+          await supabase.from("pg_images").insert({
+            pg_id: listing.id,
+            image_url: publicUrl,
+            is_360: img.is360,
+          });
+        }
+      }
+
+      toast.success("Listing submitted for admin approval!");
+      navigate("/owner");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create listing");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -87,31 +113,16 @@ export default function CreateListingPage() {
           <p className="text-sm text-muted-foreground mb-6">Your listing will be reviewed by admin before going live.</p>
 
           <div className="space-y-5">
-            {/* Basic Info */}
             <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="font-display text-base">Basic Information</CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="font-display text-base">Basic Information</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">PG Name *</label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunrise PG for Men" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">City *</label>
-                    <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                      {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">Area / Locality *</label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Koramangala" />
-                  </div>
-                </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">Full Address</label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" />
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Location *</label>
+                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Koramangala, Bangalore" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Description *</label>
@@ -120,11 +131,8 @@ export default function CreateListingPage() {
               </CardContent>
             </Card>
 
-            {/* Pricing */}
             <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="font-display text-base">Pricing & Details</CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="font-display text-base">Pricing & Details</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -140,12 +148,12 @@ export default function CreateListingPage() {
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Occupancy</label>
                     <select value={occupancy} onChange={(e) => setOccupancy(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                      {["Single", "Double Sharing", "Triple Sharing", "Single & Double"].map((o) => <option key={o} value={o}>{o}</option>)}
+                      {["Single", "Double Sharing", "Triple Sharing"].map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Gender</label>
-                    <select value={gender} onChange={(e) => setGender(e.target.value as typeof gender)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                    <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="co-ed">Co-ed</option>
@@ -155,31 +163,20 @@ export default function CreateListingPage() {
               </CardContent>
             </Card>
 
-            {/* Facilities */}
             <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="font-display text-base">Facilities</CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="font-display text-base">Facilities</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {allFacilities.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => toggleFacility(f)}
+                  {ALL_FACILITIES.map((f) => (
+                    <button key={f} onClick={() => toggleFacility(f)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                        selectedFacilities.includes(f)
-                          ? "gradient-primary text-primary-foreground border-transparent"
-                          : "bg-card text-muted-foreground border-border hover:bg-secondary"
-                      }`}
-                    >
-                      {f}
-                    </button>
+                        selectedFacilities.includes(f) ? "gradient-primary text-primary-foreground border-transparent" : "bg-card text-muted-foreground border-border hover:bg-secondary"
+                      }`}>{f}</button>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Images */}
             <Card className="border-border">
               <CardHeader className="pb-3">
                 <CardTitle className="font-display text-base flex items-center gap-2">
@@ -187,33 +184,31 @@ export default function CreateListingPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Paste image URL..." className="flex-1" />
-                  <Button variant="outline" size="sm" onClick={addImage} disabled={!imageUrl.trim() || images.length >= 6}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-                {images.length > 0 && (
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
+                  <Upload className="w-4 h-4 mr-2" /> Upload Images
+                </Button>
+                {uploadedImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
-                    {images.map((img, i) => (
+                    {uploadedImages.map((img, i) => (
                       <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-border">
-                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
                         <button onClick={() => removeImage(i)} className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground">
                           <X className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => toggle360(i)}
+                          className={`absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs font-medium ${img.is360 ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                          {img.is360 ? "360°" : "Normal"}
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">360° Panorama Image URL (optional)</label>
-                  <Input value={panoramaUrl} onChange={(e) => setPanoramaUrl(e.target.value)} placeholder="Paste panorama image URL..." />
-                </div>
               </CardContent>
             </Card>
 
-            <Button onClick={handleSubmit} className="w-full gradient-primary text-primary-foreground shadow-glow" size="lg">
-              <Upload className="w-4 h-4 mr-2" /> Submit for Approval
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full gradient-primary text-primary-foreground shadow-glow" size="lg">
+              <Upload className="w-4 h-4 mr-2" /> {isSubmitting ? "Submitting..." : "Submit for Approval"}
             </Button>
           </div>
         </motion.div>
