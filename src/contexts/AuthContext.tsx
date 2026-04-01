@@ -1,65 +1,132 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User, Session } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
-export type UserRole = "admin" | "owner" | "resident" | null;
+type AppRole = Database["public"]["Enums"]["app_role"];
 
 export interface AppUser {
   id: string;
-  name: string;
   email: string;
-  role: UserRole;
+  fullName: string | null;
+  phone: string | null;
+  role: AppRole;
 }
 
 interface AuthContextType {
   user: AppUser | null;
-  login: (email: string, password: string, role: UserRole) => boolean;
-  logout: () => void;
+  session: Session | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<string | null>;
+  signup: (email: string, password: string, fullName: string, phone: string, role: "pg_owner" | "user") => Promise<string | null>;
+  logout: () => Promise<void>;
   isAdmin: boolean;
   isOwner: boolean;
-  isResident: boolean;
+  isUser: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_USERS: Record<string, AppUser & { password: string }> = {
-  "admin@stayfinder.com": { id: "u-admin", name: "Super Admin", email: "admin@stayfinder.com", role: "admin", password: "admin123" },
-  "owner@stayfinder.com": { id: "u-owner", name: "Rajesh Kumar", email: "owner@stayfinder.com", role: "owner", password: "owner123" },
-  "resident@stayfinder.com": { id: "u-res1", name: "Arjun Mehta", email: "resident@stayfinder.com", role: "resident", password: "res123" },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(() => {
-    const stored = localStorage.getItem("sf_user");
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((email: string, password: string, role: UserRole): boolean => {
-    const demo = DEMO_USERS[email];
-    if (demo && demo.password === password && demo.role === role) {
-      const u: AppUser = { id: demo.id, name: demo.name, email: demo.email, role: demo.role };
-      setUser(u);
-      localStorage.setItem("sf_user", JSON.stringify(u));
-      return true;
-    }
-    // Allow any login for demo with chosen role
-    const u: AppUser = { id: `u-${Date.now()}`, name: email.split("@")[0], email, role };
-    setUser(u);
-    localStorage.setItem("sf_user", JSON.stringify(u));
-    return true;
+  const fetchProfile = useCallback(async (userId: string, email: string): Promise<AppUser | null> => {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, phone")
+      .eq("id", userId)
+      .single();
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
+
+    return {
+      id: userId,
+      email,
+      fullName: profile?.full_name ?? null,
+      phone: profile?.phone ?? null,
+      role: (roleData?.role as AppRole) ?? "user",
+    };
   }, []);
 
-  const logout = useCallback(() => {
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        // Use setTimeout to avoid potential deadlock with Supabase auth
+        setTimeout(async () => {
+          const appUser = await fetchProfile(session.user.id, session.user.email ?? "");
+          setUser(appUser);
+          setLoading(false);
+        }, 0);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchProfile(session.user.id, session.user.email ?? "").then((appUser) => {
+          setUser(appUser);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error ? error.message : null;
+  }, []);
+
+  const signup = useCallback(async (
+    email: string, password: string, fullName: string, phone: string, role: "pg_owner" | "user"
+  ): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+    if (error) return error.message;
+
+    // Update profile with phone & update role if pg_owner
+    if (data.user) {
+      await supabase.from("profiles").update({ phone }).eq("id", data.user.id);
+      if (role === "pg_owner") {
+        await supabase.from("user_roles").update({ role: "pg_owner" as AppRole }).eq("user_id", data.user.id);
+      }
+    }
+    return null;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("sf_user");
+    setSession(null);
   }, []);
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
+      loading,
       login,
+      signup,
       logout,
       isAdmin: user?.role === "admin",
-      isOwner: user?.role === "owner",
-      isResident: user?.role === "resident",
+      isOwner: user?.role === "pg_owner",
+      isUser: user?.role === "user",
     }}>
       {children}
     </AuthContext.Provider>
