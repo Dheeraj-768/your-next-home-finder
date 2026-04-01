@@ -1,24 +1,29 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Heart, MapPin, Star, Users, Calendar, Phone, MessageCircle, Wifi, UtensilsCrossed, Shield, Dumbbell, Car, Zap, Droplets, Gamepad2, Fingerprint, PartyPopper, MonitorSmartphone, Building2, CheckCircle2, Clock } from "lucide-react";
-import { useState, Suspense, lazy } from "react";
+import { ArrowLeft, Heart, MapPin, Star, Users, Calendar, Phone, MessageCircle, Wifi, UtensilsCrossed, Shield, Dumbbell, Car, Zap, Droplets, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { motion } from "framer-motion";
-import { pgListings, reviews as allReviews } from "@/data/mockData";
-import { StarRating, RatingBar } from "@/components/RatingComponents";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { StarRating } from "@/components/RatingComponents";
+import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
 
 const PanoramaViewer = lazy(() => import("@/components/PanoramaViewer"));
 
 const facilityIconMap: Record<string, React.ElementType> = {
   WiFi: Wifi, Food: UtensilsCrossed, Security: Shield, Gym: Dumbbell,
-  Parking: Car, "Power Backup": Zap, "Hot Water": Droplets, "Gaming Zone": Gamepad2,
-  "Biometric Entry": Fingerprint, Events: PartyPopper, Coworking: MonitorSmartphone,
-  CCTV: Shield, Laundry: Droplets, Housekeeping: Building2, AC: Zap, Terrace: Building2,
-  "Security Guard": Shield,
+  Parking: Car, "Power Backup": Zap, "Hot Water": Droplets, CCTV: Shield,
+  Laundry: Droplets, AC: Zap,
 };
+
+type PGWithImages = Tables<"pg_listings"> & { pg_images: Tables<"pg_images">[]; profiles: { full_name: string | null } | null };
 
 export default function PGDetailPage() {
   const { id } = useParams();
-  const pg = pgListings.find((p) => p.id === id);
-  const pgReviews = allReviews.filter((r) => r.pgId === id);
+  const { user } = useAuth();
+  const [pg, setPg] = useState<PGWithImages | null>(null);
+  const [reviews, setReviews] = useState<(Tables<"reviews"> & { profiles: { full_name: string | null; phone: string | null } | null })[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [showPanorama, setShowPanorama] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
@@ -26,6 +31,55 @@ export default function PGDetailPage() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [bookingSubmitted, setBookingSubmitted] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  useEffect(() => {
+    const fetchPG = async () => {
+      const { data } = await supabase
+        .from("pg_listings")
+        .select("*, pg_images(*), profiles!pg_listings_owner_id_fkey(full_name)")
+        .eq("id", id!)
+        .single();
+      if (data) setPg(data as PGWithImages);
+
+      const { data: reviewsData } = await supabase
+        .from("reviews")
+        .select("*, profiles(full_name, phone)")
+        .eq("pg_id", id!);
+      if (reviewsData) setReviews(reviewsData as any);
+      setLoading(false);
+    };
+    if (id) fetchPG();
+  }, [id]);
+
+  const handleSubmitReview = async () => {
+    if (!user) { toast.error("Please log in to review"); return; }
+    if (!user.phone) { toast.error("Only verified users with a phone number can review this PG"); return; }
+    
+    setSubmittingReview(true);
+    const { error } = await supabase.from("reviews").insert({
+      user_id: user.id,
+      pg_id: id!,
+      rating: reviewRating,
+      comment: reviewComment,
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Review submitted!");
+      setReviewComment("");
+      // Refresh reviews
+      const { data } = await supabase.from("reviews").select("*, profiles(full_name, phone)").eq("pg_id", id!);
+      if (data) setReviews(data as any);
+    }
+    setSubmittingReview(false);
+  };
+
+  if (loading) {
+    return <div className="min-h-screen pt-20 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+  }
 
   if (!pg) {
     return (
@@ -38,86 +92,71 @@ export default function PGDetailPage() {
     );
   }
 
+  const normalImages = pg.pg_images?.filter((img) => !img.is_360) ?? [];
+  const panoramaImages = pg.pg_images?.filter((img) => img.is_360) ?? [];
+  const amenities = pg.amenities ?? [];
+
   return (
     <div className="min-h-screen pt-16 pb-24 md:pb-8">
-      {/* Header */}
       <div className="container py-4 flex items-center gap-3">
-        <Link to="/listings" className="p-2 rounded-lg hover:bg-secondary transition-colors">
-          <ArrowLeft className="w-5 h-5 text-foreground" />
-        </Link>
+        <Link to="/listings" className="p-2 rounded-lg hover:bg-secondary transition-colors"><ArrowLeft className="w-5 h-5 text-foreground" /></Link>
         <div className="flex-1">
-          <h1 className="font-display text-xl font-bold text-foreground">{pg.name}</h1>
-          <div className="flex items-center gap-1 text-muted-foreground text-sm">
-            <MapPin className="w-3.5 h-3.5" />
-            {pg.location}
-          </div>
+          <h1 className="font-display text-xl font-bold text-foreground">{pg.title}</h1>
+          <div className="flex items-center gap-1 text-muted-foreground text-sm"><MapPin className="w-3.5 h-3.5" />{pg.location}</div>
         </div>
         <button onClick={() => setWishlisted(!wishlisted)} className="p-2 rounded-lg hover:bg-secondary transition-colors">
           <Heart className={`w-5 h-5 ${wishlisted ? "fill-destructive text-destructive" : "text-foreground"}`} />
         </button>
       </div>
 
-      {/* Images */}
       <div className="container mb-6">
-        <div className="rounded-xl overflow-hidden">
-          <div className="aspect-video relative">
-            <img src={pg.images[selectedImage]} alt={pg.name} className="w-full h-full object-cover" />
-            {pg.panoramaUrl && (
-              <button
-                onClick={() => setShowPanorama(!showPanorama)}
-                className="absolute bottom-3 right-3 px-3 py-2 glass rounded-lg text-sm font-medium text-foreground hover:bg-card transition-colors"
-              >
-                {showPanorama ? "📷 Photos" : "🔄 360° View"}
-              </button>
-            )}
-          </div>
-        </div>
+        {normalImages.length > 0 && (
+          <>
+            <div className="rounded-xl overflow-hidden">
+              <div className="aspect-video relative">
+                <img src={normalImages[selectedImage]?.image_url} alt={pg.title} className="w-full h-full object-cover" />
+                {panoramaImages.length > 0 && (
+                  <button onClick={() => setShowPanorama(!showPanorama)}
+                    className="absolute bottom-3 right-3 px-3 py-2 glass rounded-lg text-sm font-medium text-foreground hover:bg-card transition-colors">
+                    {showPanorama ? "📷 Photos" : "🔄 360° View"}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2 mt-2">
+              {normalImages.map((img, i) => (
+                <button key={i} onClick={() => { setSelectedImage(i); setShowPanorama(false); }}
+                  className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === i && !showPanorama ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}>
+                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+              {panoramaImages.length > 0 && (
+                <button onClick={() => setShowPanorama(true)}
+                  className={`w-16 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-all ${showPanorama ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"}`}>
+                  360°
+                </button>
+              )}
+            </div>
+          </>
+        )}
 
-        {/* Thumbnails */}
-        <div className="flex gap-2 mt-2">
-          {pg.images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => { setSelectedImage(i); setShowPanorama(false); }}
-              className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                selectedImage === i && !showPanorama ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
-              }`}
-            >
-              <img src={img} alt="" className="w-full h-full object-cover" />
-            </button>
-          ))}
-          {pg.panoramaUrl && (
-            <button
-              onClick={() => setShowPanorama(true)}
-              className={`w-16 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-all ${
-                showPanorama ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
-              }`}
-            >
-              360°
-            </button>
-          )}
-        </div>
-
-        {/* Panorama */}
-        {showPanorama && pg.panoramaUrl && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 relative">
+        {showPanorama && panoramaImages.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
             <Suspense fallback={<div className="w-full aspect-video rounded-xl bg-secondary animate-pulse" />}>
-              <PanoramaViewer url={pg.panoramaUrl} />
+              <PanoramaViewer url={panoramaImages[0].image_url} />
             </Suspense>
           </motion.div>
         )}
       </div>
 
       <div className="container grid lg:grid-cols-3 gap-6">
-        {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick info */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: "Rent", value: `₹${pg.rent.toLocaleString()}/mo`, icon: "💰" },
-              { label: "Rating", value: `${pg.rating} ⭐`, icon: "" },
-              { label: "Vacancies", value: `${pg.vacancies} beds`, icon: "🛏️" },
-              { label: "Type", value: pg.gender, icon: "👤" },
+              { label: "Rent", value: `₹${pg.price.toLocaleString()}/mo` },
+              { label: "Vacancies", value: `${pg.vacancies ?? 0} beds` },
+              { label: "Type", value: pg.gender ?? "any" },
+              { label: "Occupancy", value: pg.occupancy ?? "N/A" },
             ].map((item) => (
               <div key={item.label} className="bg-card rounded-lg border border-border p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
@@ -126,89 +165,45 @@ export default function PGDetailPage() {
             ))}
           </div>
 
-          {/* Description */}
           <div className="bg-card rounded-xl border border-border p-5">
             <h2 className="font-display font-semibold text-foreground mb-3">About</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">{pg.description}</p>
-            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="w-4 h-4" />
-              <span>Occupancy: {pg.occupancy}</span>
-            </div>
+            {pg.profiles?.full_name && (
+              <p className="text-sm text-muted-foreground mt-2">Owner: {pg.profiles.full_name}</p>
+            )}
           </div>
 
-          {/* Facilities */}
-          <div className="bg-card rounded-xl border border-border p-5">
-            <h2 className="font-display font-semibold text-foreground mb-3">Facilities</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {pg.facilities.map((f) => {
-                const Icon = facilityIconMap[f] || CheckCircle2;
-                return (
-                  <div key={f} className="flex items-center gap-2 text-sm text-foreground">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-primary" />
+          {amenities.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="font-display font-semibold text-foreground mb-3">Facilities</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {amenities.map((f) => {
+                  const Icon = facilityIconMap[f] || CheckCircle2;
+                  return (
+                    <div key={f} className="flex items-center gap-2 text-sm text-foreground">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><Icon className="w-4 h-4 text-primary" /></div>
+                      {f}
                     </div>
-                    {f}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Nearby */}
-          <div className="bg-card rounded-xl border border-border p-5">
-            <h2 className="font-display font-semibold text-foreground mb-3">Nearby Places</h2>
-            <div className="space-y-3">
-              {pg.nearbyPlaces.map((place) => (
-                <div key={place.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-foreground">{place.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">{place.distance}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Ratings */}
-          <div className="bg-card rounded-xl border border-border p-5">
-            <h2 className="font-display font-semibold text-foreground mb-4">Ratings</h2>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="text-center">
-                <p className="font-display text-3xl font-bold gradient-text">{pg.rating}</p>
-                <StarRating rating={pg.rating} />
-                <p className="text-xs text-muted-foreground mt-1">{pg.reviewCount} reviews</p>
-              </div>
-              <div className="flex-1 space-y-2">
-                <RatingBar label="Food" value={pg.ratings.food} />
-                <RatingBar label="Cleanliness" value={pg.ratings.cleanliness} />
-                <RatingBar label="WiFi" value={pg.ratings.wifi} />
-                <RatingBar label="Safety" value={pg.ratings.safety} />
+                  );
+                })}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Reviews */}
           <div className="bg-card rounded-xl border border-border p-5">
-            <h2 className="font-display font-semibold text-foreground mb-4">Reviews</h2>
-            {pgReviews.length > 0 ? (
-              <div className="space-y-4">
-                {pgReviews.map((review) => (
+            <h2 className="font-display font-semibold text-foreground mb-4">Reviews ({reviews.length})</h2>
+            {reviews.length > 0 ? (
+              <div className="space-y-4 mb-6">
+                {reviews.map((review) => (
                   <div key={review.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
-                        {review.avatar}
+                        {(review.profiles?.full_name?.[0] || "U").toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground">{review.studentName}</span>
-                          {review.verified && (
-                            <span className="flex items-center gap-0.5 text-xs text-success">
-                              <CheckCircle2 className="w-3 h-3" /> Verified
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{review.date}</p>
+                        <span className="text-sm font-semibold text-foreground">{review.profiles?.full_name || "User"}</span>
+                        <p className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</p>
                       </div>
                       <StarRating rating={review.rating} />
                     </div>
@@ -217,37 +212,48 @@ export default function PGDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No reviews yet</p>
+              <p className="text-sm text-muted-foreground mb-6">No reviews yet. Be the first to review!</p>
+            )}
+
+            {user && (
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Write a Review</h3>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground">Rating:</label>
+                  <select value={reviewRating} onChange={(e) => setReviewRating(Number(e.target.value))}
+                    className="px-2 py-1 rounded border border-border bg-secondary text-sm">
+                    {[5, 4, 3, 2, 1].map((r) => <option key={r} value={r}>{r} ⭐</option>)}
+                  </select>
+                </div>
+                <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Share your experience..."
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" rows={3} />
+                <button onClick={handleSubmitReview} disabled={submittingReview || !reviewComment}
+                  className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium shadow-glow hover:opacity-90 disabled:opacity-50">
+                  {submittingReview ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Sidebar: Booking */}
         <div className="space-y-4">
           <div className="bg-card rounded-xl border border-border p-5 sticky top-20">
             <div className="text-center mb-4">
-              <p className="font-display text-2xl font-bold gradient-text">₹{pg.rent.toLocaleString()}</p>
+              <p className="font-display text-2xl font-bold gradient-text">₹{pg.price.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">per month</p>
             </div>
-
-            {pg.vacancies > 0 ? (
+            {(pg.vacancies ?? 0) > 0 ? (
               <span className="w-full block text-center px-3 py-1.5 rounded-lg bg-success/10 text-success text-sm font-medium mb-4">
                 {pg.vacancies} {pg.vacancies === 1 ? "vacancy" : "vacancies"} available
               </span>
             ) : (
-              <span className="w-full block text-center px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-sm font-medium mb-4">
-                No vacancies
-              </span>
+              <span className="w-full block text-center px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-sm font-medium mb-4">No vacancies</span>
             )}
 
             {!showBooking && !bookingSubmitted && (
-              <button
-                onClick={() => setShowBooking(true)}
-                disabled={pg.vacancies === 0}
-                className="w-full py-3 rounded-lg gradient-primary text-primary-foreground font-semibold shadow-glow hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Book a Visit
+              <button onClick={() => setShowBooking(true)} disabled={(pg.vacancies ?? 0) === 0}
+                className="w-full py-3 rounded-lg gradient-primary text-primary-foreground font-semibold shadow-glow hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
+                <Calendar className="w-4 h-4 inline mr-2" /> Book a Visit
               </button>
             )}
 
@@ -255,33 +261,19 @@ export default function PGDetailPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={bookingDate}
-                    onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                  <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Time</label>
-                  <select
-                    value={bookingTime}
-                    onChange={(e) => setBookingTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
+                  <select value={bookingTime} onChange={(e) => setBookingTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
                     <option value="">Select time</option>
-                    {["9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"].map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
+                    {["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"].map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <button
-                  onClick={() => {
-                    if (bookingDate && bookingTime) setBookingSubmitted(true);
-                  }}
-                  disabled={!bookingDate || !bookingTime}
-                  className="w-full py-3 rounded-lg gradient-primary text-primary-foreground font-semibold shadow-glow hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
+                <button onClick={() => { if (bookingDate && bookingTime) setBookingSubmitted(true); }} disabled={!bookingDate || !bookingTime}
+                  className="w-full py-3 rounded-lg gradient-primary text-primary-foreground font-semibold shadow-glow hover:opacity-90 disabled:opacity-50">
                   Confirm Visit
                 </button>
               </motion.div>
@@ -289,20 +281,12 @@ export default function PGDetailPage() {
 
             {bookingSubmitted && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6 text-success" />
-                </div>
+                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mx-auto"><CheckCircle2 className="w-6 h-6 text-success" /></div>
                 <p className="text-sm font-semibold text-foreground">Visit Booked!</p>
                 <p className="text-xs text-muted-foreground">{bookingDate} at {bookingTime}</p>
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Owner Contact</p>
-                  <p className="text-sm font-medium text-foreground">{pg.ownerName}</p>
-                  <p className="text-sm text-primary">+91 98765 43210</p>
-                </div>
               </motion.div>
             )}
 
-            {/* Contact buttons */}
             <div className="flex gap-2 mt-4">
               <button className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-1">
                 <Phone className="w-4 h-4" /> Call
