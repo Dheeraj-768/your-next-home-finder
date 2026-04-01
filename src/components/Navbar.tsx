@@ -10,18 +10,20 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout, isAdmin, isOwner } = useAuth();
 
+  const displayName = user?.fullName || user?.email || "";
+
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
     { path: "/listings", label: "Explore", icon: Search, show: true },
-    { path: "/wishlist", label: "Wishlist", icon: Heart, show: true },
-    { path: "/bookings", label: "Bookings", icon: Calendar, show: true },
+    { path: "/wishlist", label: "Wishlist", icon: Heart, show: !!user },
+    { path: "/bookings", label: "Bookings", icon: Calendar, show: !!user },
     { path: "/owner", label: "Owner", icon: LayoutDashboard, show: isOwner || isAdmin },
     { path: "/admin", label: "Admin", icon: ShieldCheck, show: isAdmin },
   ].filter((i) => i.show);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
   return (
@@ -39,15 +41,10 @@ export default function Navbar() {
             {navItems.map((item) => {
               const active = location.pathname === item.path;
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
+                <Link key={item.path} to={item.path}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    active
-                      ? "gradient-primary text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  }`}
-                >
+                    active ? "gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}>
                   <item.icon className="w-4 h-4" />
                   {item.label}
                 </Link>
@@ -60,8 +57,8 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-sm">
                   <User className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-foreground font-medium">{user.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize">({user.role})</span>
+                  <span className="text-foreground font-medium max-w-[120px] truncate">{displayName}</span>
+                  <span className="text-xs text-muted-foreground capitalize">({user.role.replace("_", " ")})</span>
                 </div>
                 <button onClick={handleLogout} className="p-2 text-muted-foreground hover:text-foreground transition-colors">
                   <LogOut className="w-4 h-4" />
@@ -83,24 +80,16 @@ export default function Navbar() {
 
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-16 left-0 right-0 z-40 glass border-b border-border p-4 md:hidden"
-          >
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="fixed top-16 left-0 right-0 z-40 glass border-b border-border p-4 md:hidden">
             <div className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const active = location.pathname === item.path;
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
+                  <Link key={item.path} to={item.path} onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                       active ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
-                    }`}
-                  >
+                    }`}>
                     <item.icon className="w-4 h-4" />
                     {item.label}
                   </Link>
@@ -109,7 +98,7 @@ export default function Navbar() {
               <div className="border-t border-border pt-3 mt-2 flex flex-col gap-2">
                 {user ? (
                   <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="px-4 py-2 text-sm font-medium text-destructive text-left">
-                    Log out ({user.name})
+                    Log out ({displayName})
                   </button>
                 ) : (
                   <>
@@ -128,13 +117,10 @@ export default function Navbar() {
           {navItems.slice(0, 5).map((item) => {
             const active = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
+              <Link key={item.path} to={item.path}
                 className={`flex flex-col items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                   active ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
+                }`}>
                 <item.icon className={`w-5 h-5 ${active ? "text-primary" : ""}`} />
                 {item.label}
               </Link>
