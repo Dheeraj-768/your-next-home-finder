@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          created_at: string
+          id: string
+          pg_id: string
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pg_id: string
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pg_id?: string
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_pg_id_fkey"
+            columns: ["pg_id"]
+            isOneToOne: false
+            referencedRelation: "pg_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pg_images: {
         Row: {
           created_at: string
@@ -48,9 +87,11 @@ export type Database = {
       }
       pg_listings: {
         Row: {
+          ac: boolean | null
           amenities: string[] | null
           created_at: string
           description: string | null
+          food: boolean | null
           gender: string | null
           id: string
           location: string
@@ -61,11 +102,15 @@ export type Database = {
           updated_at: string
           vacancies: number | null
           verified: boolean | null
+          water: boolean | null
+          wifi: boolean | null
         }
         Insert: {
+          ac?: boolean | null
           amenities?: string[] | null
           created_at?: string
           description?: string | null
+          food?: boolean | null
           gender?: string | null
           id?: string
           location: string
@@ -76,11 +121,15 @@ export type Database = {
           updated_at?: string
           vacancies?: number | null
           verified?: boolean | null
+          water?: boolean | null
+          wifi?: boolean | null
         }
         Update: {
+          ac?: boolean | null
           amenities?: string[] | null
           created_at?: string
           description?: string | null
+          food?: boolean | null
           gender?: string | null
           id?: string
           location?: string
@@ -91,6 +140,8 @@ export type Database = {
           updated_at?: string
           vacancies?: number | null
           verified?: boolean | null
+          water?: boolean | null
+          wifi?: boolean | null
         }
         Relationships: [
           {
