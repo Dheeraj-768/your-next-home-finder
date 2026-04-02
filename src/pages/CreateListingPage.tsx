@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const ALL_FACILITIES = ["WiFi", "Food", "AC", "Hot Water", "Laundry", "Gym", "Parking", "CCTV", "Power Backup", "Housekeeping", "Security Guard", "Terrace"];
+const ALL_FACILITIES = ["WiFi", "Food", "AC", "Water", "Hot Water", "Laundry", "Gym", "Parking", "CCTV", "Power Backup", "Housekeeping", "Security Guard", "Terrace"];
 
 export default function CreateListingPage() {
   const { user } = useAuth();
