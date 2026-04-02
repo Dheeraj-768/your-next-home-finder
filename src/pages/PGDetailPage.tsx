@@ -28,9 +28,26 @@ export default function PGDetailPage() {
   const [showPanorama, setShowPanorama] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
-  const [bookingDate, setBookingDate] = useState("");
-  const [bookingTime, setBookingTime] = useState("");
+  const [bookingPhone, setBookingPhone] = useState("");
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookingSubmitted, setBookingSubmitted] = useState(false);
+
+  const handleBooking = async () => {
+    if (!user) { toast.error("Please log in to book"); return; }
+    setBookingSubmitting(true);
+    const { error } = await supabase.from("bookings").insert({
+      user_id: user.id,
+      pg_id: id!,
+      phone: bookingPhone,
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setBookingSubmitted(true);
+      toast.success("Booking confirmed!");
+    }
+    setBookingSubmitting(false);
+  };
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);

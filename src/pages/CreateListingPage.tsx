@@ -72,6 +72,10 @@ export default function CreateListingPage() {
           occupancy,
           vacancies: parseInt(vacancies) || 0,
           verified: false,
+          wifi: selectedFacilities.includes("WiFi"),
+          water: selectedFacilities.includes("Water"),
+          food: selectedFacilities.includes("Food"),
+          ac: selectedFacilities.includes("AC"),
         })
         .select()
         .single();
