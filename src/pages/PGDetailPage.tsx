@@ -172,6 +172,9 @@ export default function PGDetailPage() {
 
         {showPanorama && panoramaImages.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+            <h3 className="font-display font-semibold text-foreground mb-2 flex items-center gap-2">
+              🔄 Virtual Room Tour <span className="text-xs font-normal text-muted-foreground">Drag to look around</span>
+            </h3>
             <Suspense fallback={<div className="w-full aspect-video rounded-xl bg-secondary animate-pulse" />}>
               <PanoramaViewer url={panoramaImages[0].image_url} />
             </Suspense>
