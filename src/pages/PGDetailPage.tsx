@@ -56,7 +56,20 @@ export default function PGDetailPage() {
 
   const handleSubmitReview = async () => {
     if (!user) { toast.error("Please log in to review"); return; }
-    if (!user.phone) { toast.error("Only verified users with a phone number can review this PG"); return; }
+    
+    // Check if user has a booking for this PG
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("pg_id", id!)
+      .limit(1)
+      .single();
+    
+    if (!booking) {
+      toast.error("Only users who booked this PG can review");
+      return;
+    }
     
     setSubmittingReview(true);
     const { error } = await supabase.from("reviews").insert({
