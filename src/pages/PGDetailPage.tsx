@@ -273,21 +273,13 @@ export default function PGDetailPage() {
             {showBooking && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">Date</label>
-                  <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)}
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Phone</label>
+                  <input type="tel" value={bookingPhone} onChange={(e) => setBookingPhone(e.target.value)} placeholder="Your phone number"
                     className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">Time</label>
-                  <select value={bookingTime} onChange={(e) => setBookingTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    <option value="">Select time</option>
-                    {["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"].map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <button onClick={() => { if (bookingDate && bookingTime) setBookingSubmitted(true); }} disabled={!bookingDate || !bookingTime}
+                <button onClick={handleBooking} disabled={!bookingPhone || bookingSubmitting}
                   className="w-full py-3 rounded-lg gradient-primary text-primary-foreground font-semibold shadow-glow hover:opacity-90 disabled:opacity-50">
-                  Confirm Visit
+                  {bookingSubmitting ? "Booking..." : "Confirm Booking"}
                 </button>
               </motion.div>
             )}
@@ -295,8 +287,8 @@ export default function PGDetailPage() {
             {bookingSubmitted && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-3">
                 <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mx-auto"><CheckCircle2 className="w-6 h-6 text-success" /></div>
-                <p className="text-sm font-semibold text-foreground">Visit Booked!</p>
-                <p className="text-xs text-muted-foreground">{bookingDate} at {bookingTime}</p>
+                <p className="text-sm font-semibold text-foreground">Booking Confirmed!</p>
+                <p className="text-xs text-muted-foreground">You can now leave a review.</p>
               </motion.div>
             )}
 
