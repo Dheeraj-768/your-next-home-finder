@@ -242,7 +242,10 @@ export const reviews: Review[] = [
   },
 ];
 
-export const sampleBookings: Booking[] = [];
+export const sampleBookings: Booking[] = [
+  { id: "b1", pgId: "1", pgName: "Sunrise PG for Men", date: "2026-04-05", time: "10:00 AM", status: "confirmed" },
+  { id: "b2", pgId: "3", pgName: "BlueSky Co-Living", date: "2026-04-08", time: "2:00 PM", status: "pending" },
+];
 
 export const cities = ["Bangalore", "Mumbai", "Delhi", "Hyderabad", "Pune", "Chennai"];
 
