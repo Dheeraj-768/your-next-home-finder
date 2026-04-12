@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export default function Auth() {
+  const { user, role: userRole, isReady } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,6 +19,15 @@ export default function Auth() {
   const [role, setRole] = useState<"user" | "pg_owner">("user");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Redirect logged-in users
+  useEffect(() => {
+    if (isReady && user) {
+      if (userRole === "admin") navigate("/admin", { replace: true });
+      else if (userRole === "pg_owner") navigate("/owner", { replace: true });
+      else navigate("/", { replace: true });
+    }
+  }, [isReady, user, userRole, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
