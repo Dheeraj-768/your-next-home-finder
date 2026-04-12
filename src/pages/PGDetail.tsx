@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import PanoramaViewer from "@/components/PanoramaViewer";
 import { toast } from "sonner";
+import PayRentButton from "@/components/PayRentButton";
 import { MapPin, Wifi, Utensils, Wind, Droplets, Star, Loader2, CalendarDays } from "lucide-react";
 
 export default function PGDetail() {
@@ -187,6 +188,11 @@ export default function PGDetail() {
               {pg.vacancies !== null && <p>{pg.vacancies > 0 ? `${pg.vacancies} vacancies available` : "No vacancies"}</p>}
             </CardContent>
           </Card>
+
+          {/* Pay Rent */}
+          {user && hasBooked && role === "user" && (
+            <PayRentButton pgId={id!} pgTitle={pg.title} />
+          )}
 
           {/* Booking form */}
           <Card>
