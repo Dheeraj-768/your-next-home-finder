@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => {
         if (error) {
           console.error("Role fetch error:", error);
