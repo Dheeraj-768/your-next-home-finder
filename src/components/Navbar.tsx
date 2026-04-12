@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Home, LogOut, User, LayoutDashboard, Search } from "lucide-react";
+import { Home, LogOut, User, LayoutDashboard, Search, ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
   const { user, role, isReady, signOut } = useAuth();
@@ -29,6 +29,13 @@ export default function Navbar() {
 
           {isReady && user ? (
             <>
+              {role === "admin" && (
+                <Link to="/admin">
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    <ShieldCheck className="h-4 w-4" /> Admin
+                  </Button>
+                </Link>
+              )}
               {role === "pg_owner" && (
                 <Link to="/owner">
                   <Button variant="ghost" size="sm" className="gap-1.5">

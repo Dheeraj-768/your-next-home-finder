@@ -38,6 +38,13 @@ export default function Index() {
                 </Button>
               </Link>
             )}
+            {user && role === "admin" && (
+              <Link to="/admin">
+                <Button size="lg" variant="outline" className="gap-2 text-base px-8">
+                  Admin Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

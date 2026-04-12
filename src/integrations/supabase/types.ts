@@ -62,6 +62,66 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_date: string | null
+          pg_id: string
+          proof_url: string | null
+          room_number: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payment_date?: string | null
+          pg_id: string
+          proof_url?: string | null
+          room_number?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_date?: string | null
+          pg_id?: string
+          proof_url?: string | null
+          room_number?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pg_images: {
         Row: {
           created_at: string
