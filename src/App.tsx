@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Listings from "./pages/Listings";
 import PGDetail from "./pages/PGDetail";
 import OwnerDashboard from "./pages/OwnerDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import MyBookings from "./pages/MyBookings";
 import NotFound from "./pages/NotFound";
 
@@ -20,6 +21,14 @@ function ProtectedOwnerRoute({ children }: { children: React.ReactNode }) {
   if (!isReady || isRoleLoading) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   if (!user) return <Navigate to="/auth" replace />;
   if (role !== "pg_owner") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, role, isReady, isRoleLoading } = useAuth();
+  if (!isReady || isRoleLoading) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role !== "admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -44,6 +53,7 @@ const App = () => (
             <Route path="/listings" element={<Listings />} />
             <Route path="/pg/:id" element={<PGDetail />} />
             <Route path="/owner" element={<ProtectedOwnerRoute><OwnerDashboard /></ProtectedOwnerRoute>} />
+            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
             <Route path="/my-bookings" element={<ProtectedUserRoute><MyBookings /></ProtectedUserRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
