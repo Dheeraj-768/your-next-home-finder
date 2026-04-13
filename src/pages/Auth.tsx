@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { lovable } from "@/integrations/lovable/index";
 
 export default function Auth() {
   const { user, role: userRole, isReady } = useAuth();
