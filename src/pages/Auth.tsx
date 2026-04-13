@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -18,9 +19,11 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"user" | "pg_owner">("user");
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Redirect logged-in users
   useEffect(() => {
     if (isReady && user) {
       if (userRole === "admin") navigate("/admin", { replace: true });
@@ -32,33 +35,34 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email, password,
         options: {
           data: { full_name: fullName, role },
           emailRedirectTo: window.location.origin,
         },
       });
       setLoading(false);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Account created! Check your email to verify, then sign in.");
-        setMode("login");
-      }
+      if (error) toast.error(error.message);
+      else { toast.success("Account created! Check your email to verify, then sign in."); setMode("login"); }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Welcome back!");
-        navigate("/");
-      }
+      if (error) toast.error(error.message);
+      else { toast.success("Welcome back!"); navigate("/"); }
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) toast.error(error.message);
+    else { toast.success("Password reset link sent! Check your email."); setForgotOpen(false); }
   };
 
   return (
@@ -96,6 +100,13 @@ export default function Auth() {
               <Label htmlFor="pw">Password</Label>
               <Input id="pw" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} />
             </div>
+            {mode === "login" && (
+              <div className="text-right">
+                <button type="button" className="text-sm text-primary hover:underline" onClick={() => { setForgotEmail(email); setForgotOpen(true); }}>
+                  Forgot Password?
+                </button>
+              </div>
+            )}
             <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               {mode === "login" ? "Sign In" : "Create Account"}
@@ -109,6 +120,24 @@ export default function Auth() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Email address</Label>
+              <Input type="email" required value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="your@email.com" />
+            </div>
+            <Button type="submit" className="w-full" disabled={forgotLoading}>
+              {forgotLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Send Reset Link
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

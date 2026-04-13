@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Listings from "./pages/Listings";
 import PGDetail from "./pages/PGDetail";
 import OwnerDashboard from "./pages/OwnerDashboard";
@@ -50,6 +51,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/listings" element={<Listings />} />
             <Route path="/pg/:id" element={<PGDetail />} />
             <Route path="/owner" element={<ProtectedOwnerRoute><OwnerDashboard /></ProtectedOwnerRoute>} />
