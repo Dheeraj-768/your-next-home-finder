@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Upload, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
+
+const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 interface Props {
   pgId: string;
@@ -18,8 +21,19 @@ export default function ImageUpload({ pgId, onUploaded }: Props) {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
 
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("Only JPG, PNG, and WebP images are allowed.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error("Image must be under 2MB.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${pgId}/${crypto.randomUUID()}.${ext}`;
 
@@ -53,14 +67,8 @@ export default function ImageUpload({ pgId, onUploaded }: Props) {
 
   return (
     <div className="flex items-center gap-4 flex-wrap">
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={uploading}
-        onClick={() => fileRef.current?.click()}
-        className="gap-1.5"
-      >
+      <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
+      <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="gap-1.5">
         {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         Upload Image
       </Button>
@@ -68,6 +76,7 @@ export default function ImageUpload({ pgId, onUploaded }: Props) {
         <Checkbox checked={is360} onCheckedChange={v => setIs360(!!v)} />
         360° panorama
       </label>
+      <span className="text-xs text-muted-foreground">Max 2MB · JPG, PNG, WebP</span>
     </div>
   );
 }
