@@ -54,7 +54,7 @@ export default function MyBookings() {
                 <p className="text-sm text-muted-foreground">{b.pg_listings?.location}</p>
                 {b.visit_date && <p className="text-sm">Visit: {b.visit_date} {b.visit_time}</p>}
                 <div className="flex items-center justify-between">
-                  <Badge variant={b.status === "confirmed" ? "default" : "secondary"}>{b.status}</Badge>
+                  <Badge variant={b.status === "accepted" ? "default" : b.status === "rejected" ? "destructive" : "secondary"} className="capitalize">{b.status}</Badge>
                   <Button variant="ghost" size="icon" onClick={() => handleCancel(b.id)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
