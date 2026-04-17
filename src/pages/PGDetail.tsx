@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import PanoramaViewer from "@/components/PanoramaViewer";
 import { toast } from "sonner";
 import PayRentButton from "@/components/PayRentButton";
+import BedBookingSection from "@/components/BedBookingSection";
 import { MapPin, Wifi, Utensils, Wind, Droplets, Star, Loader2, CalendarDays } from "lucide-react";
 
 export default function PGDetail() {
@@ -135,6 +136,9 @@ export default function PGDetail() {
             {pg.occupancy && <Badge variant="outline">{pg.occupancy}</Badge>}
           </div>
           <p className="text-foreground/80 leading-relaxed">{pg.description}</p>
+
+          {/* Bed Booking */}
+          <BedBookingSection pgId={id!} pgPrice={pg.price} pgTitle={pg.title} />
 
           {/* Reviews */}
           <div>

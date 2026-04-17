@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import AddPropertyForm from "@/components/AddPropertyForm";
 import EditPropertyForm from "@/components/EditPropertyForm";
 import ImageUpload from "@/components/ImageUpload";
+import ManageRoomsDialog from "@/components/ManageRoomsDialog";
 import { toast } from "sonner";
 import { Plus, Trash2, ImageIcon, Calendar, Bell, BellDot, Pencil, CheckCircle, XCircle } from "lucide-react";
 
@@ -160,6 +161,7 @@ export default function OwnerDashboard() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           {pg.verified ? <Badge className="bg-success text-success-foreground">Verified</Badge> : <Badge variant="secondary">Pending</Badge>}
+                          <ManageRoomsDialog pgId={pg.id} pgTitle={pg.title} />
                           <Button variant="outline" size="icon" onClick={() => setEditingId(pg.id)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="destructive" size="icon" onClick={() => handleDelete(pg.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
