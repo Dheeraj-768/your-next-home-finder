@@ -14,6 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      bed_bookings: {
+        Row: {
+          bed_id: string
+          created_at: string
+          id: string
+          payment_id: string | null
+          reservation_id: string | null
+          status: Database["public"]["Enums"]["bed_booking_status"]
+          user_id: string
+        }
+        Insert: {
+          bed_id: string
+          created_at?: string
+          id?: string
+          payment_id?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["bed_booking_status"]
+          user_id: string
+        }
+        Update: {
+          bed_id?: string
+          created_at?: string
+          id?: string
+          payment_id?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["bed_booking_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bed_bookings_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bed_bookings_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bed_bookings_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "bed_reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bed_reservations: {
+        Row: {
+          bed_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          user_id: string
+        }
+        Insert: {
+          bed_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          user_id: string
+        }
+        Update: {
+          bed_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bed_reservations_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beds: {
+        Row: {
+          bed_number: number
+          id: string
+          room_id: string
+          status: Database["public"]["Enums"]["bed_status"]
+          updated_at: string
+        }
+        Insert: {
+          bed_number: number
+          id?: string
+          room_id: string
+          status?: Database["public"]["Enums"]["bed_status"]
+          updated_at?: string
+        }
+        Update: {
+          bed_number?: number
+          id?: string
+          room_id?: string
+          status?: Database["public"]["Enums"]["bed_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beds_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           created_at: string
@@ -291,6 +410,38 @@ export type Database = {
           },
         ]
       }
+      rooms: {
+        Row: {
+          created_at: string
+          id: string
+          pg_id: string
+          room_number: string
+          total_beds: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pg_id: string
+          room_number: string
+          total_beds: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pg_id?: string
+          room_number?: string
+          total_beds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_pg_id_fkey"
+            columns: ["pg_id"]
+            isOneToOne: false
+            referencedRelation: "pg_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -314,6 +465,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_reservations: { Args: never; Returns: number }
+      confirm_bed_booking: {
+        Args: { _payment_id: string; _reservation_id: string }
+        Returns: {
+          bed_id: string
+          created_at: string
+          id: string
+          payment_id: string | null
+          reservation_id: string | null
+          status: Database["public"]["Enums"]["bed_booking_status"]
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bed_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -321,9 +491,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_reservation: {
+        Args: { _reservation_id: string }
+        Returns: undefined
+      }
+      reserve_bed: {
+        Args: { _bed_id: string }
+        Returns: {
+          bed_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bed_reservations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "pg_owner" | "user"
+      bed_booking_status: "pending" | "confirmed" | "cancelled"
+      bed_status: "available" | "reserved" | "booked"
+      reservation_status: "active" | "expired" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -452,6 +646,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "pg_owner", "user"],
+      bed_booking_status: ["pending", "confirmed", "cancelled"],
+      bed_status: ["available", "reserved", "booked"],
+      reservation_status: ["active", "expired", "completed", "cancelled"],
     },
   },
 } as const
